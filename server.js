@@ -46,6 +46,7 @@ app.post('/update', (req, res) => {
   }
   logoUrl?: string
   position?: 'bottom-right' | 'bottom-left'
+  launcherIcon?: 'question' | 'chat' | 'support' | 'smile'
   zendeskKey?: string
 }
 
@@ -68,7 +69,8 @@ const defaultConfig: HappiBeanConfig = {
     welcomeSubtitle: '${config.texts?.welcomeSubtitle || 'How can we help you today?'}'
   },
   logoUrl: '${config.logoUrl || ''}',
-  position: '${config.position || 'bottom-right'}'
+  position: '${config.position || 'bottom-right'}',
+  launcherIcon: '${config.launcherIcon || 'question'}'
 }
 
 export function getConfig(): HappiBeanConfig {
