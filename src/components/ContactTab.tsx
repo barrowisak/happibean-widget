@@ -42,9 +42,20 @@ export function ContactTab({ config }: Props) {
     try {
       const res = await fetch(`${config.apiUrl}/ticket-forms`)
       const data = await res.json()
-      setForms(data.forms || [])
-      if (data.forms && data.forms.length > 0) {
-        selectForm(data.forms[0])
+      const allForms = data.forms || []
+
+      // Filter to only show "Green Relations" form (case-insensitive search)
+      const greenRelationsForms = allForms.filter((f: TicketForm) =>
+        f.name.toLowerCase().includes('green relations') ||
+        f.display_name.toLowerCase().includes('green relations')
+      )
+
+      // Use filtered forms if found, otherwise fallback to first form
+      const formsToUse = greenRelationsForms.length > 0 ? greenRelationsForms : allForms.slice(0, 1)
+      setForms(formsToUse)
+
+      if (formsToUse.length > 0) {
+        selectForm(formsToUse[0])
       }
     } catch (err) {
       console.error('Failed to fetch forms:', err)
