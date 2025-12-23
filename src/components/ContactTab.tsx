@@ -254,30 +254,51 @@ export function ContactTab({ config }: Props) {
   }
 
   // Build ordered field list:
-  // 1. Parent fields first, each followed by their visible children
-  // 2. Then non-parent, non-child fields
+  // 1. Root parent fields (parent fields that are NOT also child fields)
+  // 2. Visible children after their parent (recursively)
+  // 3. Non-parent, non-child fields
   const childFieldIds = getChildFieldIds()
   const parentFieldIds = getParentFieldIds()
+
+  // Check if a field is currently visible based on conditions
+  const isFieldVisible = (fieldId: number): boolean => {
+    // If it's not a child field, it's always visible (unless excluded)
+    if (!childFieldIds.has(fieldId)) return true
+
+    // If it IS a child field, check if any parent condition makes it visible
+    for (const condition of conditions) {
+      const parentValue = formData[`field_${condition.parent_field_id}`]
+      if (parentValue === condition.value) {
+        const isChild = condition.child_fields.some(cf => cf.id === fieldId)
+        if (isChild) return true
+      }
+    }
+    return false
+  }
 
   const orderedFields: FormField[] = []
   const addedFieldIds = new Set<number>()
 
-  // Find parent fields and add them with their children
-  fields.forEach(field => {
-    if (parentFieldIds.has(field.id) && !excludedTypes.includes(field.type)) {
-      if (!addedFieldIds.has(field.id)) {
-        orderedFields.push(field)
-        addedFieldIds.add(field.id)
+  // Recursive function to add a field and its visible children
+  const addFieldWithChildren = (field: FormField) => {
+    if (addedFieldIds.has(field.id)) return
+    if (excludedTypes.includes(field.type)) return
+    if (!isFieldVisible(field.id)) return
 
-        // Add visible children immediately after parent
-        const visibleChildren = getVisibleChildrenForParent(field.id)
-        visibleChildren.forEach(child => {
-          if (!addedFieldIds.has(child.id)) {
-            orderedFields.push(child)
-            addedFieldIds.add(child.id)
-          }
-        })
-      }
+    orderedFields.push(field)
+    addedFieldIds.add(field.id)
+
+    // If this field is also a parent, add its visible children
+    if (parentFieldIds.has(field.id)) {
+      const visibleChildren = getVisibleChildrenForParent(field.id)
+      visibleChildren.forEach(child => addFieldWithChildren(child))
+    }
+  }
+
+  // Start with root parent fields (parents that are NOT children)
+  fields.forEach(field => {
+    if (parentFieldIds.has(field.id) && !childFieldIds.has(field.id)) {
+      addFieldWithChildren(field)
     }
   })
 
