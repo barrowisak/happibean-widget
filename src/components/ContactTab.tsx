@@ -20,10 +20,17 @@ interface FormField {
   options: { name: string; value: string }[]
 }
 
+interface FieldCondition {
+  parent_field_id: number
+  value: string
+  child_fields: { id: number; is_required: boolean }[]
+}
+
 export function ContactTab({ config }: Props) {
   const [forms, setForms] = useState<TicketForm[]>([])
   const [selectedForm, setSelectedForm] = useState<TicketForm | null>(null)
   const [fields, setFields] = useState<FormField[]>([])
+  const [conditions, setConditions] = useState<FieldCondition[]>([])
   const [formData, setFormData] = useState<Record<string, string>>({
     name: '',
     email: '',
@@ -68,9 +75,68 @@ export function ContactTab({ config }: Props) {
       const res = await fetch(`${config.apiUrl}/ticket-forms/${form.id}`)
       const data = await res.json()
       setFields(data.fields || [])
+      setConditions(data.conditions || [])
     } catch (err) {
       console.error('Failed to fetch form fields:', err)
     }
+  }
+
+  // Get the parent field IDs (fields that have conditions attached)
+  const getParentFieldIds = (): Set<number> => {
+    return new Set(conditions.map(c => c.parent_field_id))
+  }
+
+  // Get all child field IDs from conditions
+  const getAllChildFieldIds = (): Set<number> => {
+    const childIds = new Set<number>()
+    conditions.forEach(c => {
+      c.child_fields.forEach(cf => childIds.add(cf.id))
+    })
+    return childIds
+  }
+
+  // Check if a field should be visible based on current form selections
+  const isFieldVisible = (fieldId: number): boolean => {
+    const parentFieldIds = getParentFieldIds()
+    const childFieldIds = getAllChildFieldIds()
+
+    // If field is a parent field (has conditions), always show it
+    if (parentFieldIds.has(fieldId)) {
+      return true
+    }
+
+    // If field is NOT a child field in any condition, always show it
+    if (!childFieldIds.has(fieldId)) {
+      return true
+    }
+
+    // Field is a child field - check if its parent condition is met
+    for (const condition of conditions) {
+      const parentValue = formData[`field_${condition.parent_field_id}`]
+      if (parentValue === condition.value) {
+        // Parent value matches this condition - check if our field is in child_fields
+        if (condition.child_fields.some(cf => cf.id === fieldId)) {
+          return true
+        }
+      }
+    }
+
+    return false
+  }
+
+  // Check if a field is required based on conditions
+  const isFieldRequired = (field: FormField): boolean => {
+    // Check if field requirement is overridden by conditions
+    for (const condition of conditions) {
+      const parentValue = formData[`field_${condition.parent_field_id}`]
+      if (parentValue === condition.value) {
+        const childField = condition.child_fields.find(cf => cf.id === field.id)
+        if (childField) {
+          return childField.is_required
+        }
+      }
+    }
+    return field.required
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,8 +145,10 @@ export function ContactTab({ config }: Props) {
     setError('')
 
     try {
+      // Only include visible fields in submission
       const customFields = fields
         .filter(f => f.type !== 'subject' && f.type !== 'description')
+        .filter(f => isFieldVisible(f.id))
         .map(f => ({
           id: f.id,
           value: formData[`field_${f.id}`] || ''
@@ -111,6 +179,17 @@ export function ContactTab({ config }: Props) {
     }
   }
 
+  const inputStyle = {
+    width: '100%',
+    padding: '10px',
+    border: '1px solid #ddd',
+    borderRadius: '8px',
+    fontSize: '14px',
+    background: '#ffffff',
+    color: '#333333',
+    boxSizing: 'border-box' as const
+  }
+
   if (submitted) {
     return (
       <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -138,6 +217,11 @@ export function ContactTab({ config }: Props) {
     )
   }
 
+  // Filter custom fields to those that are visible
+  const visibleCustomFields = fields
+    .filter(f => f.type !== 'subject' && f.type !== 'description')
+    .filter(f => isFieldVisible(f.id))
+
   return (
     <form onSubmit={handleSubmit}>
       {/* Form selector */}
@@ -152,15 +236,7 @@ export function ContactTab({ config }: Props) {
               const form = forms.find(f => f.id === Number(e.target.value))
               if (form) selectForm(form)
             }}
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              fontSize: '14px',
-              background: 'white',
-              color: '#333'
-            }}
+            style={inputStyle}
           >
             {forms.map(form => (
               <option key={form.id} value={form.id}>
@@ -181,15 +257,7 @@ export function ContactTab({ config }: Props) {
           required
           value={formData.name}
           onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-          style={{
-            width: '100%',
-            padding: '10px',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            fontSize: '14px',
-            background: 'white',
-            color: '#333'
-          }}
+          style={inputStyle}
         />
       </div>
 
@@ -203,15 +271,7 @@ export function ContactTab({ config }: Props) {
           required
           value={formData.email}
           onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
-          style={{
-            width: '100%',
-            padding: '10px',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            fontSize: '14px',
-            background: 'white',
-            color: '#333'
-          }}
+          style={inputStyle}
         />
       </div>
 
@@ -225,38 +285,22 @@ export function ContactTab({ config }: Props) {
           required
           value={formData.subject}
           onChange={e => setFormData(prev => ({ ...prev, subject: e.target.value }))}
-          style={{
-            width: '100%',
-            padding: '10px',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            fontSize: '14px',
-            background: 'white',
-            color: '#333'
-          }}
+          style={inputStyle}
         />
       </div>
 
-      {/* Custom fields */}
-      {fields.filter(f => f.type !== 'subject' && f.type !== 'description').map(field => (
+      {/* Dynamic custom fields - only show visible ones */}
+      {visibleCustomFields.map(field => (
         <div key={field.id} style={{ marginBottom: '15px' }}>
           <label style={{ display: 'block', marginBottom: '5px', fontSize: '13px', color: '#555' }}>
-            {field.title} {field.required && '*'}
+            {field.title} {isFieldRequired(field) && '*'}
           </label>
           {field.type === 'tagger' || field.type === 'dropdown' ? (
             <select
-              required={field.required}
+              required={isFieldRequired(field)}
               value={formData[`field_${field.id}`] || ''}
               onChange={e => setFormData(prev => ({ ...prev, [`field_${field.id}`]: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                fontSize: '14px',
-                background: 'white',
-                color: '#333'
-              }}
+              style={inputStyle}
             >
               <option value="">Välj...</option>
               {field.options.map(opt => (
@@ -266,18 +310,10 @@ export function ContactTab({ config }: Props) {
           ) : (
             <input
               type="text"
-              required={field.required}
+              required={isFieldRequired(field)}
               value={formData[`field_${field.id}`] || ''}
               onChange={e => setFormData(prev => ({ ...prev, [`field_${field.id}`]: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                fontSize: '14px',
-                background: 'white',
-                color: '#333'
-              }}
+              style={inputStyle}
             />
           )}
         </div>
@@ -294,14 +330,8 @@ export function ContactTab({ config }: Props) {
           value={formData.message}
           onChange={e => setFormData(prev => ({ ...prev, message: e.target.value }))}
           style={{
-            width: '100%',
-            padding: '10px',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            fontSize: '14px',
-            resize: 'vertical',
-            background: 'white',
-            color: '#333'
+            ...inputStyle,
+            resize: 'vertical'
           }}
         />
       </div>
