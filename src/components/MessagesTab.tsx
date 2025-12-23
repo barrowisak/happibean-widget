@@ -5,104 +5,26 @@ interface Props {
   config: HappiBeanConfig
 }
 
-interface Message {
-  id: string
-  text: string
-  sender: 'user' | 'agent' | 'system'
-  timestamp: Date
-}
-
 export function MessagesTab({ config }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [inputText, setInputText] = useState('')
-  const [isConnected, setIsConnected] = useState(false)
-  const [isTyping, setIsTyping] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
-    // Add welcome message
-    setMessages([
-      {
-        id: '1',
-        text: 'Välkommen! Hur kan vi hjälpa dig idag?',
-        sender: 'system',
-        timestamp: new Date()
-      }
-    ])
-    setIsConnected(true)
-  }, [])
-
-  useEffect(() => {
-    // Scroll to bottom when new messages arrive
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  const sendMessage = async () => {
-    if (!inputText.trim()) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: inputText.trim(),
-      sender: 'user',
-      timestamp: new Date()
+    if (!config.zendeskKey) {
+      setError('Ingen Zendesk-nyckel konfigurerad')
+      setIsLoading(false)
+      return
     }
 
-    setMessages(prev => [...prev, userMessage])
-    setInputText('')
-    setIsTyping(true)
+    // Create iframe to embed Zendesk Web Widget
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 2000)
 
-    // Send to API and get response
-    try {
-      const res = await fetch(`${config.apiUrl}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: inputText.trim() })
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        const agentMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: data.reply || 'Tack för ditt meddelande! Vi återkommer så snart som möjligt.',
-          sender: 'agent',
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, agentMessage])
-      } else {
-        // Fallback response
-        const fallbackMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: 'Tack för ditt meddelande! En av våra medarbetare kommer att svara dig inom kort. Du kan också nå oss via kontaktformuläret.',
-          sender: 'agent',
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, fallbackMessage])
-      }
-    } catch (err) {
-      // Fallback response
-      const fallbackMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: 'Tack för ditt meddelande! En av våra medarbetare kommer att svara dig inom kort.',
-        sender: 'agent',
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, fallbackMessage])
-    } finally {
-      setIsTyping(false)
-    }
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
-  }
+    return () => clearTimeout(timer)
+  }, [config.zendeskKey])
 
   if (!config.zendeskKey) {
     return (
@@ -112,186 +34,99 @@ export function MessagesTab({ config }: Props) {
         <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
           Vår chatt-funktion är på väg. Under tiden kan du kontakta oss via kontaktformuläret.
         </p>
-        <div style={{
-          background: '#f5f5f5',
-          borderRadius: '8px',
-          padding: '15px',
-          fontSize: '13px',
-          color: '#555'
-        }}>
-          <strong>Tips:</strong> Gå till Contact-fliken för att skicka ett meddelande direkt.
-        </div>
       </div>
     )
   }
 
-  return (
-    <div ref={containerRef} style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      minHeight: '350px'
-    }}>
-      {/* Chat header */}
-      <div style={{
-        padding: '12px 15px',
-        borderBottom: '1px solid #eee',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px'
-      }}>
-        <div style={{
-          width: '10px',
-          height: '10px',
-          borderRadius: '50%',
-          background: isConnected ? '#4CAF50' : '#ccc'
-        }} />
-        <span style={{ fontSize: '13px', color: '#666' }}>
-          {isConnected ? 'Ansluten till support' : 'Ansluter...'}
-        </span>
-      </div>
+  // Embed Zendesk Messaging via iframe pointing to a hosted page
+  const zendeskEmbedUrl = `https://happirel.zendesk.com/embeddable_messaging/web_widget?key=${config.zendeskKey}`
 
-      {/* Messages container */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '15px',
+  return (
+    <div
+      ref={containerRef}
+      style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px'
-      }}>
-        {messages.map(msg => (
-          <div
-            key={msg.id}
+        height: '100%',
+        minHeight: '400px',
+        position: 'relative'
+      }}
+    >
+      {isLoading && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'white',
+          zIndex: 10
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '15px' }}>💬</div>
+          <p style={{ color: '#666', fontSize: '14px' }}>Laddar chatt...</p>
+        </div>
+      )}
+
+      <iframe
+        ref={iframeRef}
+        src={zendeskEmbedUrl}
+        style={{
+          width: '100%',
+          height: '100%',
+          minHeight: '400px',
+          border: 'none',
+          flex: 1
+        }}
+        title="Zendesk Chat"
+        allow="microphone"
+        onLoad={() => setIsLoading(false)}
+        onError={() => {
+          setIsLoading(false)
+          setError('Kunde inte ladda chatten')
+        }}
+      />
+
+      {error && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'white'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '15px' }}>⚠️</div>
+          <h3 style={{ marginBottom: '10px', color: '#333' }}>Chatten kunde inte laddas</h3>
+          <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>{error}</p>
+          <button
+            onClick={() => {
+              setError(null)
+              setIsLoading(true)
+              if (iframeRef.current) {
+                iframeRef.current.src = zendeskEmbedUrl
+              }
+            }}
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: msg.sender === 'user' ? 'flex-end' : 'flex-start'
+              padding: '10px 20px',
+              background: config.colors.primary,
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer'
             }}
           >
-            <div style={{
-              maxWidth: '80%',
-              padding: '10px 14px',
-              borderRadius: msg.sender === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-              background: msg.sender === 'user' ? config.colors.primary : '#f0f0f0',
-              color: msg.sender === 'user' ? 'white' : '#333',
-              fontSize: '14px',
-              lineHeight: '1.4'
-            }}>
-              {msg.text}
-            </div>
-            <span style={{
-              fontSize: '11px',
-              color: '#999',
-              marginTop: '4px'
-            }}>
-              {formatTime(msg.timestamp)}
-            </span>
-          </div>
-        ))}
-
-        {isTyping && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 14px',
-            background: '#f0f0f0',
-            borderRadius: '16px 16px 16px 4px',
-            alignSelf: 'flex-start',
-            maxWidth: '80%'
-          }}>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <span style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: '#999',
-                animation: 'bounce 1.4s infinite ease-in-out both',
-                animationDelay: '-0.32s'
-              }} />
-              <span style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: '#999',
-                animation: 'bounce 1.4s infinite ease-in-out both',
-                animationDelay: '-0.16s'
-              }} />
-              <span style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: '#999',
-                animation: 'bounce 1.4s infinite ease-in-out both'
-              }} />
-            </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input area */}
-      <div style={{
-        padding: '12px',
-        borderTop: '1px solid #eee',
-        display: 'flex',
-        gap: '10px',
-        alignItems: 'flex-end'
-      }}>
-        <textarea
-          value={inputText}
-          onChange={e => setInputText(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Skriv ett meddelande..."
-          rows={1}
-          style={{
-            flex: 1,
-            padding: '10px 14px',
-            border: '1px solid #ddd',
-            borderRadius: '20px',
-            fontSize: '14px',
-            resize: 'none',
-            outline: 'none',
-            fontFamily: 'inherit',
-            background: '#fff',
-            color: '#333',
-            maxHeight: '100px',
-            overflowY: 'auto'
-          }}
-        />
-        <button
-          onClick={sendMessage}
-          disabled={!inputText.trim()}
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            border: 'none',
-            background: inputText.trim() ? config.colors.primary : '#ddd',
-            color: 'white',
-            cursor: inputText.trim() ? 'pointer' : 'not-allowed',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M22 2L11 13" />
-            <path d="M22 2L15 22L11 13L2 9L22 2Z" />
-          </svg>
-        </button>
-      </div>
-
-      {/* CSS for typing animation */}
-      <style>{`
-        @keyframes bounce {
-          0%, 80%, 100% { transform: scale(0); }
-          40% { transform: scale(1); }
-        }
-      `}</style>
+            Försök igen
+          </button>
+        </div>
+      )}
     </div>
   )
 }
