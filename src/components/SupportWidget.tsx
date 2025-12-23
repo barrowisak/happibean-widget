@@ -60,52 +60,58 @@ export function SupportWidget({ config, onClose }: Props) {
       {/* Header */}
       <div style={{
         background: `linear-gradient(135deg, ${config.colors.primary}, ${config.colors.secondary})`,
-        padding: '20px',
+        padding: '15px 20px',
         color: 'white',
         position: 'relative'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <span style={{ fontSize: '14px', fontWeight: 500 }}>Support</span>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
 
-        {config.logoUrl && (
-          <img
-            src={config.logoUrl}
-            alt="Logo"
-            style={{
-              width: '50px',
-              height: '50px',
-              objectFit: 'contain',
-              marginBottom: '10px',
-              background: 'white',
-              borderRadius: '8px',
-              padding: '5px'
-            }}
-          />
-        )}
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '8px' }}>
-          {config.texts.welcomeTitle}
-        </h2>
-        <p style={{ opacity: 0.9, fontSize: '0.95rem' }}>
-          {config.texts.welcomeSubtitle}
-        </p>
+        {/* Logo + Welcome text */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {config.logoUrl && (
+            <img
+              src={config.logoUrl}
+              alt="Logo"
+              style={{
+                width: '45px',
+                height: '45px',
+                objectFit: 'contain',
+                background: 'white',
+                borderRadius: '8px',
+                padding: '4px',
+                flexShrink: 0
+              }}
+            />
+          )}
+          <div>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '2px' }}>
+              {config.texts.welcomeTitle}
+            </h2>
+            <p style={{ opacity: 0.9, fontSize: '0.9rem', margin: 0 }}>
+              {config.texts.welcomeSubtitle}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Content */}
