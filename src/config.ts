@@ -28,11 +28,12 @@ const defaultConfig: HappiBeanConfig = {
     secondary: '#8B7355',
     background: '#FFFFFF'
   },
-  tabs: ['home', 'messages', 'help', 'contact'],
+  tabs: ["home","help","messages","contact"],
   texts: {
     welcomeTitle: 'Welcome!',
     welcomeSubtitle: 'How can we help you today?'
   },
+  logoUrl: '',
   position: 'bottom-right'
 }
 
