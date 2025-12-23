@@ -22,16 +22,16 @@ declare global {
 }
 
 const defaultConfig: HappiBeanConfig = {
-  apiUrl: 'https://zendesk-proxy-kz58.onrender.com',
+  apiUrl: 'https://happibean-api.onrender.com',
   colors: {
     primary: '#6F4E37',
     secondary: '#8B7355',
     background: '#FFFFFF'
   },
-  tabs: ['home', 'help', 'contact'],
+  tabs: ['home', 'messages', 'help', 'contact'],
   texts: {
-    welcomeTitle: 'Hej! 👋',
-    welcomeSubtitle: 'Hur kan vi hjälpa dig idag?'
+    welcomeTitle: 'Welcome!',
+    welcomeSubtitle: 'How can we help you today?'
   },
   position: 'bottom-right'
 }

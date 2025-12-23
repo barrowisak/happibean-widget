@@ -13,10 +13,10 @@ interface Props {
 type TabId = 'home' | 'help' | 'contact' | 'messages'
 
 const tabLabels: Record<TabId, string> = {
-  home: 'Hem',
-  help: 'Hjälp',
-  contact: 'Kontakt',
-  messages: 'Chatt'
+  home: 'Home',
+  help: 'Help',
+  contact: 'Contact',
+  messages: 'Messages'
 }
 
 export function SupportWidget({ config, onClose }: Props) {
@@ -30,7 +30,7 @@ export function SupportWidget({ config, onClose }: Props) {
     const color = isActive ? config.colors.primary : '#999'
     switch (tab) {
       case 'home':
-        return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        return <svg width="20" height="20" viewBox="0 0 24 24" fill={isActive ? color : 'none'} stroke={color} strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       case 'help':
         return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12" y2="17.5"/></svg>
       case 'contact':
@@ -49,7 +49,7 @@ export function SupportWidget({ config, onClose }: Props) {
       maxWidth: 'calc(100vw - 40px)',
       height: '600px',
       maxHeight: 'calc(100vh - 120px)',
-      background: config.colors.background,
+      background: '#f5f5f5',
       borderRadius: '16px',
       boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
       display: 'flex',
@@ -64,28 +64,26 @@ export function SupportWidget({ config, onClose }: Props) {
         color: 'white',
         position: 'relative'
       }}>
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            background: 'rgba(255,255,255,0.2)',
-            border: 'none',
-            borderRadius: '50%',
-            width: '28px',
-            height: '28px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <span style={{ fontSize: '14px', fontWeight: 500 }}>Support</span>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
 
         {config.logoUrl && (
           <img
@@ -102,16 +100,16 @@ export function SupportWidget({ config, onClose }: Props) {
             }}
           />
         )}
-        <h2 style={{ fontSize: '1.3rem', marginBottom: '4px' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '8px' }}>
           {config.texts.welcomeTitle}
         </h2>
-        <p style={{ opacity: 0.9, fontSize: '0.9rem' }}>
+        <p style={{ opacity: 0.9, fontSize: '0.95rem' }}>
           {config.texts.welcomeSubtitle}
         </p>
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '15px' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '15px', background: '#f5f5f5' }}>
         {activeTab === 'home' && <HomeTab config={config} onNavigate={setActiveTab} />}
         {activeTab === 'help' && <HelpTab config={config} />}
         {activeTab === 'contact' && <ContactTab config={config} />}
@@ -121,8 +119,8 @@ export function SupportWidget({ config, onClose }: Props) {
       {/* Tab bar */}
       <div style={{
         display: 'flex',
-        borderTop: '1px solid #eee',
-        background: '#fafafa'
+        borderTop: '1px solid #e0e0e0',
+        background: 'white'
       }}>
         {config.tabs.map(tab => (
           <button
@@ -132,7 +130,7 @@ export function SupportWidget({ config, onClose }: Props) {
               flex: 1,
               padding: '12px 8px',
               border: 'none',
-              background: 'transparent',
+              background: activeTab === tab ? 'rgba(111, 78, 55, 0.05)' : 'transparent',
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',

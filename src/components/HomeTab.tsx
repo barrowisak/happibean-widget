@@ -95,130 +95,119 @@ export function HomeTab({ config, onNavigate }: Props) {
 
   return (
     <div>
-      {/* Search */}
-      <div style={{ position: 'relative', marginBottom: '20px' }}>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          placeholder="Sök i hjälpcentret..."
+      {/* Send us a message card */}
+      {config.tabs.includes('messages') && (
+        <div
+          onClick={() => onNavigate('messages')}
           style={{
-            width: '100%',
-            padding: '12px 40px 12px 14px',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            fontSize: '14px',
-            outline: 'none'
-          }}
-        />
-        <button
-          onClick={handleSearch}
-          style={{
-            position: 'absolute',
-            right: '8px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            background: 'none',
-            border: 'none',
+            background: 'white',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
             cursor: 'pointer',
-            padding: '5px'
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2">
+          <div>
+            <div style={{ fontWeight: 600, color: '#333', marginBottom: '4px' }}>
+              Send us a message
+            </div>
+            <div style={{ fontSize: '13px', color: '#888' }}>
+              We typically reply within an hour
+            </div>
+          </div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
+      )}
+
+      {/* Search */}
+      <div style={{
+        position: 'relative',
+        marginBottom: '20px',
+        background: 'white',
+        borderRadius: '12px',
+        padding: '4px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" style={{ marginRight: '10px' }}>
             <circle cx="11" cy="11" r="8"/>
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-        </button>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            placeholder="Search for help"
+            style={{
+              flex: 1,
+              border: 'none',
+              fontSize: '14px',
+              outline: 'none',
+              background: 'transparent'
+            }}
+          />
+        </div>
       </div>
 
       {/* Search Results */}
       {searchResults.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
-          <h4 style={{ fontSize: '12px', color: '#888', textTransform: 'uppercase', marginBottom: '10px' }}>
-            Sökresultat
-          </h4>
           {searchResults.map(article => (
             <div
               key={article.id}
               onClick={() => setSelectedArticle(article)}
               style={{
-                padding: '12px',
-                borderBottom: '1px solid #eee',
-                cursor: 'pointer'
+                padding: '14px 0',
+                borderBottom: '1px solid #f0f0f0',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
               }}
             >
-              <div style={{ fontWeight: 500, color: '#333', marginBottom: '4px' }}>
+              <div style={{ fontWeight: 400, color: '#333', flex: 1 }}>
                 {article.title}
               </div>
-              <div style={{ fontSize: '12px', color: '#888' }}>
-                {stripHtml(article.body).slice(0, 80)}...
-              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
             </div>
           ))}
         </div>
       )}
 
-      {/* Quick Links */}
-      {searchResults.length === 0 && (
-        <>
-          <div style={{ marginBottom: '20px' }}>
-            <h4 style={{ fontSize: '12px', color: '#888', textTransform: 'uppercase', marginBottom: '10px' }}>
-              Snabblänkar
-            </h4>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => onNavigate('help')}
-                style={{
-                  padding: '10px 16px',
-                  background: '#f5f5f5',
-                  border: 'none',
-                  borderRadius: '20px',
-                  cursor: 'pointer',
-                  fontSize: '13px'
-                }}
-              >
-                📚 FAQ
-              </button>
-              <button
-                onClick={() => onNavigate('contact')}
-                style={{
-                  padding: '10px 16px',
-                  background: '#f5f5f5',
-                  border: 'none',
-                  borderRadius: '20px',
-                  cursor: 'pointer',
-                  fontSize: '13px'
-                }}
-              >
-                ✉️ Kontakta oss
-              </button>
+      {/* Popular Articles */}
+      {searchResults.length === 0 && popularArticles.length > 0 && (
+        <div>
+          {popularArticles.map(article => (
+            <div
+              key={article.id}
+              onClick={() => setSelectedArticle(article)}
+              style={{
+                padding: '14px 0',
+                borderBottom: '1px solid #f0f0f0',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <div style={{ fontWeight: 400, color: '#333', flex: 1 }}>
+                {article.title}
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
             </div>
-          </div>
-
-          {/* Popular Articles */}
-          {popularArticles.length > 0 && (
-            <div>
-              <h4 style={{ fontSize: '12px', color: '#888', textTransform: 'uppercase', marginBottom: '10px' }}>
-                Populära artiklar
-              </h4>
-              {popularArticles.map(article => (
-                <div
-                  key={article.id}
-                  onClick={() => setSelectedArticle(article)}
-                  style={{
-                    padding: '12px 0',
-                    borderBottom: '1px solid #eee',
-                    cursor: 'pointer',
-                    color: '#333'
-                  }}
-                >
-                  {article.title}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
+          ))}
+        </div>
       )}
     </div>
   )
