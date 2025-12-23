@@ -82,6 +82,9 @@ export function ContactTab({ config }: Props) {
   // Types to exclude from rendering
   const excludedTypes = ['subject', 'description', 'assignee', 'group', 'priority', 'status', 'tickettype']
 
+  // Field titles to exclude (we have our own name/email fields)
+  const excludedTitles = ['namn', 'name', 'your name', 'ditt namn', 'e-post', 'email', 'e-postadress']
+
   // Get all child field IDs
   const getChildFieldIds = (): Set<number> => {
     const childIds = new Set<number>()
@@ -283,6 +286,7 @@ export function ContactTab({ config }: Props) {
   const addFieldWithChildren = (field: FormField) => {
     if (addedFieldIds.has(field.id)) return
     if (excludedTypes.includes(field.type)) return
+    if (excludedTitles.includes(field.title.toLowerCase())) return
     if (!isFieldVisible(field.id)) return
 
     orderedFields.push(field)
@@ -302,9 +306,9 @@ export function ContactTab({ config }: Props) {
     }
   })
 
-  // Add remaining non-child fields (that aren't excluded types)
+  // Add remaining non-child fields (that aren't excluded types/titles)
   fields.forEach(field => {
-    if (!addedFieldIds.has(field.id) && !childFieldIds.has(field.id) && !excludedTypes.includes(field.type)) {
+    if (!addedFieldIds.has(field.id) && !childFieldIds.has(field.id) && !excludedTypes.includes(field.type) && !excludedTitles.includes(field.title.toLowerCase())) {
       orderedFields.push(field)
       addedFieldIds.add(field.id)
     }

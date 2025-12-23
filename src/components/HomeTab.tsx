@@ -150,7 +150,8 @@ export function HomeTab({ config, onNavigate }: Props) {
               border: 'none',
               fontSize: '14px',
               outline: 'none',
-              background: 'transparent'
+              background: 'transparent',
+              color: '#333333'
             }}
           />
         </div>

@@ -5,10 +5,16 @@ interface Props {
   config: HappiBeanConfig
 }
 
+declare global {
+  interface Window {
+    Smooch?: any
+  }
+}
+
 export function MessagesTab({ config }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const scriptLoadedRef = useRef(false)
+  const initStartedRef = useRef(false)
 
   useEffect(() => {
     if (!config.zendeskKey) {
@@ -16,18 +22,71 @@ export function MessagesTab({ config }: Props) {
       return
     }
 
-    // Check if Zendesk is already loaded
-    if ((window as any).zE) {
-      setStatus('ready')
-      openMessenger()
+    if (initStartedRef.current) return
+    initStartedRef.current = true
+
+    // Load Sunshine Conversations Web SDK
+    const script = document.createElement('script')
+    script.src = 'https://cdn.smooch.io/smooch.min.js'
+    script.async = true
+
+    script.onload = () => {
+      initSmooch()
+    }
+
+    script.onerror = () => {
+      console.error('Failed to load Smooch SDK')
+      setStatus('error')
+    }
+
+    if (!document.querySelector('script[src*="smooch.min.js"]')) {
+      document.head.appendChild(script)
+    } else if (window.Smooch) {
+      initSmooch()
+    }
+  }, [config.zendeskKey])
+
+  const initSmooch = () => {
+    if (!window.Smooch || !containerRef.current) {
+      setTimeout(initSmooch, 100)
       return
     }
 
-    // Check if script is already loading
-    if (scriptLoadedRef.current) return
-    scriptLoadedRef.current = true
+    // Check if already initialized
+    if (window.Smooch.isOpened !== undefined) {
+      try {
+        window.Smooch.render(containerRef.current)
+        setStatus('ready')
+      } catch (e) {
+        console.log('Smooch already rendered')
+        setStatus('ready')
+      }
+      return
+    }
 
-    // Load Zendesk Messaging widget
+    window.Smooch.init({
+      integrationId: config.zendeskKey,
+      embedded: true,
+      customColors: {
+        brandColor: config.colors.primary.replace('#', ''),
+        conversationColor: config.colors.primary.replace('#', ''),
+        actionColor: config.colors.primary.replace('#', '')
+      }
+    }).then(() => {
+      console.log('Smooch initialized')
+      if (containerRef.current) {
+        window.Smooch.render(containerRef.current)
+      }
+      setStatus('ready')
+    }).catch((err: any) => {
+      console.error('Smooch init error:', err)
+      // If Smooch fails, fall back to Zendesk Messaging popup approach
+      fallbackToZendeskMessaging()
+    })
+  }
+
+  const fallbackToZendeskMessaging = () => {
+    // Load Zendesk Messaging as fallback (opens as popup)
     const script = document.createElement('script')
     script.id = 'ze-snippet'
     script.src = `https://static.zdassets.com/ekr/snippet.js?key=${config.zendeskKey}`
@@ -35,82 +94,20 @@ export function MessagesTab({ config }: Props) {
 
     script.onload = () => {
       setStatus('ready')
-      // Wait for Zendesk to initialize
-      setTimeout(() => {
-        openMessenger()
-        moveWidgetToContainer()
-      }, 1000)
     }
 
-    script.onerror = () => {
-      setStatus('error')
-    }
-
-    // Only add if not already present
     if (!document.getElementById('ze-snippet')) {
       document.head.appendChild(script)
+    } else {
+      setStatus('ready')
     }
+  }
 
-    return () => {
-      // Don't remove the script on unmount - it causes issues
-    }
-  }, [config.zendeskKey])
-
-  const openMessenger = () => {
+  const openZendeskMessenger = () => {
     if ((window as any).zE) {
-      try {
-        (window as any).zE('messenger', 'open')
-      } catch (e) {
-        console.log('Could not open messenger:', e)
-      }
+      (window as any).zE('messenger', 'open')
     }
   }
-
-  const moveWidgetToContainer = () => {
-    // Try to find and move the Zendesk widget iframe into our container
-    const container = containerRef.current
-    if (!container) return
-
-    // Zendesk creates an iframe with specific attributes
-    const findAndMoveWidget = () => {
-      const zendeskFrame = document.querySelector('iframe[title="Messaging window"]') as HTMLIFrameElement
-      const zendeskLauncher = document.querySelector('iframe[title="Launcher"]') as HTMLIFrameElement
-
-      if (zendeskFrame) {
-        // Hide the launcher button
-        if (zendeskLauncher) {
-          zendeskLauncher.style.display = 'none'
-        }
-
-        // Clone styles and move to container
-        zendeskFrame.style.position = 'relative'
-        zendeskFrame.style.width = '100%'
-        zendeskFrame.style.height = '100%'
-        zendeskFrame.style.minHeight = '400px'
-        zendeskFrame.style.bottom = 'auto'
-        zendeskFrame.style.right = 'auto'
-        zendeskFrame.style.left = '0'
-        zendeskFrame.style.top = '0'
-
-        // Move the iframe to our container
-        container.appendChild(zendeskFrame)
-        setStatus('ready')
-      }
-    }
-
-    // Try immediately and with delays
-    findAndMoveWidget()
-    setTimeout(findAndMoveWidget, 500)
-    setTimeout(findAndMoveWidget, 1500)
-    setTimeout(findAndMoveWidget, 3000)
-  }
-
-  // Re-open messenger when tab becomes active
-  useEffect(() => {
-    if (status === 'ready') {
-      openMessenger()
-    }
-  }, [status])
 
   if (!config.zendeskKey) {
     return (
@@ -139,13 +136,16 @@ export function MessagesTab({ config }: Props) {
   return (
     <div
       ref={containerRef}
+      id="smooch-container"
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
+        height: '450px',
         minHeight: '400px',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        background: '#fff',
+        borderRadius: '8px'
       }}
     >
       {status === 'loading' && (
@@ -159,45 +159,6 @@ export function MessagesTab({ config }: Props) {
         }}>
           <div style={{ fontSize: '48px', marginBottom: '15px' }}>💬</div>
           <p style={{ color: '#666', fontSize: '14px' }}>Laddar chatt...</p>
-        </div>
-      )}
-
-      {status === 'ready' && (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          minHeight: '300px',
-          padding: '20px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '15px' }}>💬</div>
-          <h3 style={{ marginBottom: '10px', color: '#333' }}>Chatten är redo!</h3>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
-            Klicka på knappen nedan för att starta en konversation.
-          </p>
-          <button
-            onClick={openMessenger}
-            style={{
-              padding: '12px 24px',
-              background: config.colors.primary,
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            Starta chatt
-          </button>
         </div>
       )}
     </div>
