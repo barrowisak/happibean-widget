@@ -157,7 +157,9 @@ export function ContactTab({ config }: Props) {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '8px',
-              fontSize: '14px'
+              fontSize: '14px',
+              background: 'white',
+              color: '#333'
             }}
           >
             {forms.map(form => (
@@ -184,7 +186,9 @@ export function ContactTab({ config }: Props) {
             padding: '10px',
             border: '1px solid #ddd',
             borderRadius: '8px',
-            fontSize: '14px'
+            fontSize: '14px',
+            background: 'white',
+            color: '#333'
           }}
         />
       </div>
@@ -204,7 +208,9 @@ export function ContactTab({ config }: Props) {
             padding: '10px',
             border: '1px solid #ddd',
             borderRadius: '8px',
-            fontSize: '14px'
+            fontSize: '14px',
+            background: 'white',
+            color: '#333'
           }}
         />
       </div>
@@ -224,7 +230,9 @@ export function ContactTab({ config }: Props) {
             padding: '10px',
             border: '1px solid #ddd',
             borderRadius: '8px',
-            fontSize: '14px'
+            fontSize: '14px',
+            background: 'white',
+            color: '#333'
           }}
         />
       </div>
@@ -245,7 +253,9 @@ export function ContactTab({ config }: Props) {
                 padding: '10px',
                 border: '1px solid #ddd',
                 borderRadius: '8px',
-                fontSize: '14px'
+                fontSize: '14px',
+                background: 'white',
+                color: '#333'
               }}
             >
               <option value="">Välj...</option>
@@ -264,7 +274,9 @@ export function ContactTab({ config }: Props) {
                 padding: '10px',
                 border: '1px solid #ddd',
                 borderRadius: '8px',
-                fontSize: '14px'
+                fontSize: '14px',
+                background: 'white',
+                color: '#333'
               }}
             />
           )}
@@ -287,7 +299,9 @@ export function ContactTab({ config }: Props) {
             border: '1px solid #ddd',
             borderRadius: '8px',
             fontSize: '14px',
-            resize: 'vertical'
+            resize: 'vertical',
+            background: 'white',
+            color: '#333'
           }}
         />
       </div>
