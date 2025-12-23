@@ -34,7 +34,8 @@ const defaultConfig: HappiBeanConfig = {
     welcomeSubtitle: 'How can we help you today?'
   },
   logoUrl: '',
-  position: 'bottom-right'
+  position: 'bottom-right',
+  zendeskKey: 'b2a4b6ba-575e-4f0b-85b8-37e93e76dfc6'
 }
 
 export function getConfig(): HappiBeanConfig {
