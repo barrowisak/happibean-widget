@@ -12,6 +12,7 @@ export interface HappiBeanConfig {
   }
   logoUrl?: string
   position?: 'bottom-right' | 'bottom-left'
+  launcherIcon?: 'question' | 'chat' | 'support' | 'smile'
   zendeskKey?: string
 }
 
