@@ -81,11 +81,6 @@ export function ContactTab({ config }: Props) {
     }
   }
 
-  // Get the parent field IDs (fields that have conditions attached)
-  const getParentFieldIds = (): Set<number> => {
-    return new Set(conditions.map(c => c.parent_field_id))
-  }
-
   // Get all child field IDs from conditions
   const getAllChildFieldIds = (): Set<number> => {
     const childIds = new Set<number>()
@@ -97,31 +92,27 @@ export function ContactTab({ config }: Props) {
 
   // Check if a field should be visible based on current form selections
   const isFieldVisible = (fieldId: number): boolean => {
-    const parentFieldIds = getParentFieldIds()
     const childFieldIds = getAllChildFieldIds()
 
-    // If field is a parent field (has conditions), always show it
-    if (parentFieldIds.has(fieldId)) {
-      return true
-    }
-
-    // If field is NOT a child field in any condition, always show it
-    if (!childFieldIds.has(fieldId)) {
-      return true
-    }
-
-    // Field is a child field - check if its parent condition is met
-    for (const condition of conditions) {
-      const parentValue = formData[`field_${condition.parent_field_id}`]
-      if (parentValue === condition.value) {
-        // Parent value matches this condition - check if our field is in child_fields
-        if (condition.child_fields.some(cf => cf.id === fieldId)) {
-          return true
+    // If field IS a child field in any condition, it should be hidden by default
+    // and only shown when its parent condition is met
+    if (childFieldIds.has(fieldId)) {
+      // Check if any parent condition makes this field visible
+      for (const condition of conditions) {
+        const parentValue = formData[`field_${condition.parent_field_id}`]
+        if (parentValue === condition.value) {
+          // Parent value matches this condition - check if our field is in child_fields
+          if (condition.child_fields.some(cf => cf.id === fieldId)) {
+            return true
+          }
         }
       }
+      // Field is a child but no parent condition is met - hide it
+      return false
     }
 
-    return false
+    // Field is NOT a child field in any condition - always show it
+    return true
   }
 
   // Check if a field is required based on conditions
