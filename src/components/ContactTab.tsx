@@ -51,13 +51,11 @@ export function ContactTab({ config }: Props) {
       const data = await res.json()
       const allForms = data.forms || []
 
-      // Filter to only show "Green Relations" form (case-insensitive search)
       const greenRelationsForms = allForms.filter((f: TicketForm) =>
         f.name.toLowerCase().includes('green relations') ||
         f.display_name.toLowerCase().includes('green relations')
       )
 
-      // Use filtered forms if found, otherwise fallback to first form
       const formsToUse = greenRelationsForms.length > 0 ? greenRelationsForms : allForms.slice(0, 1)
       setForms(formsToUse)
 
@@ -81,8 +79,11 @@ export function ContactTab({ config }: Props) {
     }
   }
 
-  // Get all child field IDs from conditions
-  const getAllChildFieldIds = (): Set<number> => {
+  // Types to exclude from rendering
+  const excludedTypes = ['subject', 'description', 'assignee', 'group', 'priority', 'status', 'tickettype']
+
+  // Get all child field IDs
+  const getChildFieldIds = (): Set<number> => {
     const childIds = new Set<number>()
     conditions.forEach(c => {
       c.child_fields.forEach(cf => childIds.add(cf.id))
@@ -90,34 +91,28 @@ export function ContactTab({ config }: Props) {
     return childIds
   }
 
-  // Check if a field should be visible based on current form selections
-  const isFieldVisible = (fieldId: number): boolean => {
-    const childFieldIds = getAllChildFieldIds()
+  // Get parent field IDs
+  const getParentFieldIds = (): Set<number> => {
+    return new Set(conditions.map(c => c.parent_field_id))
+  }
 
-    // If field IS a child field in any condition, it should be hidden by default
-    // and only shown when its parent condition is met
-    if (childFieldIds.has(fieldId)) {
-      // Check if any parent condition makes this field visible
-      for (const condition of conditions) {
-        const parentValue = formData[`field_${condition.parent_field_id}`]
-        if (parentValue === condition.value) {
-          // Parent value matches this condition - check if our field is in child_fields
-          if (condition.child_fields.some(cf => cf.id === fieldId)) {
-            return true
-          }
-        }
+  // Get the child fields that should be visible for a given parent field
+  const getVisibleChildrenForParent = (parentFieldId: number): FormField[] => {
+    const parentValue = formData[`field_${parentFieldId}`]
+    if (!parentValue) return []
+
+    const visibleChildIds: number[] = []
+    for (const condition of conditions) {
+      if (condition.parent_field_id === parentFieldId && condition.value === parentValue) {
+        condition.child_fields.forEach(cf => visibleChildIds.push(cf.id))
       }
-      // Field is a child but no parent condition is met - hide it
-      return false
     }
 
-    // Field is NOT a child field in any condition - always show it
-    return true
+    return fields.filter(f => visibleChildIds.includes(f.id))
   }
 
   // Check if a field is required based on conditions
   const isFieldRequired = (field: FormField): boolean => {
-    // Check if field requirement is overridden by conditions
     for (const condition of conditions) {
       const parentValue = formData[`field_${condition.parent_field_id}`]
       if (parentValue === condition.value) {
@@ -136,10 +131,31 @@ export function ContactTab({ config }: Props) {
     setError('')
 
     try {
-      // Only include visible fields in submission
+      const childFieldIds = getChildFieldIds()
+      const parentFieldIds = getParentFieldIds()
+
+      // Build list of visible field IDs
+      const visibleFieldIds = new Set<number>()
+
+      // Add parent fields
+      parentFieldIds.forEach(id => visibleFieldIds.add(id))
+
+      // Add visible children based on current selections
+      parentFieldIds.forEach(parentId => {
+        getVisibleChildrenForParent(parentId).forEach(f => visibleFieldIds.add(f.id))
+      })
+
+      // Add fields that are neither parent nor child
+      fields.forEach(f => {
+        if (!childFieldIds.has(f.id) && !parentFieldIds.has(f.id)) {
+          if (!excludedTypes.includes(f.type)) {
+            visibleFieldIds.add(f.id)
+          }
+        }
+      })
+
       const customFields = fields
-        .filter(f => f.type !== 'subject' && f.type !== 'description')
-        .filter(f => isFieldVisible(f.id))
+        .filter(f => visibleFieldIds.has(f.id))
         .map(f => ({
           id: f.id,
           value: formData[`field_${f.id}`] || ''
@@ -181,6 +197,35 @@ export function ContactTab({ config }: Props) {
     boxSizing: 'border-box' as const
   }
 
+  const renderField = (field: FormField) => (
+    <div key={field.id} style={{ marginBottom: '15px' }}>
+      <label style={{ display: 'block', marginBottom: '5px', fontSize: '13px', color: '#555' }}>
+        {field.title} {isFieldRequired(field) && '*'}
+      </label>
+      {field.type === 'tagger' || field.type === 'dropdown' ? (
+        <select
+          required={isFieldRequired(field)}
+          value={formData[`field_${field.id}`] || ''}
+          onChange={e => setFormData(prev => ({ ...prev, [`field_${field.id}`]: e.target.value }))}
+          style={inputStyle}
+        >
+          <option value="">Välj...</option>
+          {field.options.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.name}</option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type="text"
+          required={isFieldRequired(field)}
+          value={formData[`field_${field.id}`] || ''}
+          onChange={e => setFormData(prev => ({ ...prev, [`field_${field.id}`]: e.target.value }))}
+          style={inputStyle}
+        />
+      )}
+    </div>
+  )
+
   if (submitted) {
     return (
       <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -208,10 +253,41 @@ export function ContactTab({ config }: Props) {
     )
   }
 
-  // Filter custom fields to those that are visible
-  const visibleCustomFields = fields
-    .filter(f => f.type !== 'subject' && f.type !== 'description')
-    .filter(f => isFieldVisible(f.id))
+  // Build ordered field list:
+  // 1. Parent fields first, each followed by their visible children
+  // 2. Then non-parent, non-child fields
+  const childFieldIds = getChildFieldIds()
+  const parentFieldIds = getParentFieldIds()
+
+  const orderedFields: FormField[] = []
+  const addedFieldIds = new Set<number>()
+
+  // Find parent fields and add them with their children
+  fields.forEach(field => {
+    if (parentFieldIds.has(field.id) && !excludedTypes.includes(field.type)) {
+      if (!addedFieldIds.has(field.id)) {
+        orderedFields.push(field)
+        addedFieldIds.add(field.id)
+
+        // Add visible children immediately after parent
+        const visibleChildren = getVisibleChildrenForParent(field.id)
+        visibleChildren.forEach(child => {
+          if (!addedFieldIds.has(child.id)) {
+            orderedFields.push(child)
+            addedFieldIds.add(child.id)
+          }
+        })
+      }
+    }
+  })
+
+  // Add remaining non-child fields (that aren't excluded types)
+  fields.forEach(field => {
+    if (!addedFieldIds.has(field.id) && !childFieldIds.has(field.id) && !excludedTypes.includes(field.type)) {
+      orderedFields.push(field)
+      addedFieldIds.add(field.id)
+    }
+  })
 
   return (
     <form onSubmit={handleSubmit}>
@@ -280,35 +356,8 @@ export function ContactTab({ config }: Props) {
         />
       </div>
 
-      {/* Dynamic custom fields - only show visible ones */}
-      {visibleCustomFields.map(field => (
-        <div key={field.id} style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px', fontSize: '13px', color: '#555' }}>
-            {field.title} {isFieldRequired(field) && '*'}
-          </label>
-          {field.type === 'tagger' || field.type === 'dropdown' ? (
-            <select
-              required={isFieldRequired(field)}
-              value={formData[`field_${field.id}`] || ''}
-              onChange={e => setFormData(prev => ({ ...prev, [`field_${field.id}`]: e.target.value }))}
-              style={inputStyle}
-            >
-              <option value="">Välj...</option>
-              {field.options.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.name}</option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="text"
-              required={isFieldRequired(field)}
-              value={formData[`field_${field.id}`] || ''}
-              onChange={e => setFormData(prev => ({ ...prev, [`field_${field.id}`]: e.target.value }))}
-              style={inputStyle}
-            />
-          )}
-        </div>
-      ))}
+      {/* Dynamic fields in correct order */}
+      {orderedFields.map(field => renderField(field))}
 
       {/* Message */}
       <div style={{ marginBottom: '15px' }}>
