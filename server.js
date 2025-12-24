@@ -70,7 +70,8 @@ const defaultConfig: HappiBeanConfig = {
   },
   logoUrl: '${config.logoUrl || ''}',
   position: '${config.position || 'bottom-right'}',
-  launcherIcon: '${config.launcherIcon || 'question'}'
+  launcherIcon: '${config.launcherIcon || 'question'}',
+  zendeskKey: '${config.zendeskKey || ''}'
 }
 
 export function getConfig(): HappiBeanConfig {
