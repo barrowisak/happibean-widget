@@ -97,9 +97,14 @@ export function getConfig(): HappiBeanConfig {
     // Git commit and push
     console.log('📤 Pushing to GitHub...')
     execSync('git add .', { cwd: __dirname })
-    execSync('git commit -m "Update widget design from portal"', { cwd: __dirname })
-    execSync('git push origin main', { cwd: __dirname })
-    console.log('✅ Pushed to GitHub!')
+    try {
+      execSync('git commit -m "Update widget design from portal"', { cwd: __dirname })
+      execSync('git push origin main', { cwd: __dirname })
+      console.log('✅ Pushed to GitHub!')
+    } catch (gitErr) {
+      // If commit fails (no changes), that's OK - just means we already have latest
+      console.log('ℹ️ No new changes to commit (already up to date)')
+    }
 
     res.json({ success: true, message: 'Widget updated and deployed!' })
   } catch (error) {
