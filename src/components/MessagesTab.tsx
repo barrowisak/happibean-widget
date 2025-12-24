@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { HappiBeanConfig } from '../config'
 
 interface Props {
@@ -25,7 +25,6 @@ export function MessagesTab({ config, autoOpen }: Props) {
     if (window.zE) {
       console.log('[HappiBean] Zendesk already loaded')
       setZendeskLoaded(true)
-      window.zE('messenger', 'hide')
       return
     }
 
@@ -37,7 +36,6 @@ export function MessagesTab({ config, autoOpen }: Props) {
         if (window.zE) {
           console.log('[HappiBean] Zendesk ready (polled)')
           setZendeskLoaded(true)
-          window.zE('messenger', 'hide')
           clearInterval(pollInterval)
         }
       }, 100)
@@ -67,7 +65,6 @@ export function MessagesTab({ config, autoOpen }: Props) {
         if (window.zE) {
           console.log('[HappiBean] Zendesk ready!')
           setZendeskLoaded(true)
-          window.zE('messenger', 'hide')
           clearInterval(pollInterval)
         }
       }, 100)
@@ -90,9 +87,8 @@ export function MessagesTab({ config, autoOpen }: Props) {
     document.head.appendChild(script)
 
     return () => {
-      // Hide messenger when component unmounts
+      // Close messenger when component unmounts
       if (window.zE) {
-        window.zE('messenger', 'hide')
         window.zE('messenger', 'close')
       }
     }
