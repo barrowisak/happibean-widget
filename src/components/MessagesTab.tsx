@@ -16,29 +16,77 @@ export function MessagesTab({ config, autoOpen }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [zendeskLoaded, setZendeskLoaded] = useState(false)
   const [chatOpen, setChatOpen] = useState(autoOpen || false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!config.zendeskKey) return
 
-    // Check if Zendesk script already exists
-    const existingScript = document.getElementById('ze-snippet')
-    if (existingScript) {
+    // Check if zE is already available
+    if (window.zE) {
+      console.log('[HappiBean] Zendesk already loaded')
       setZendeskLoaded(true)
+      window.zE('messenger', 'hide')
       return
     }
+
+    // Check if script already exists
+    const existingScript = document.getElementById('ze-snippet')
+    if (existingScript) {
+      // Script exists but zE not ready yet - poll for it
+      const pollInterval = setInterval(() => {
+        if (window.zE) {
+          console.log('[HappiBean] Zendesk ready (polled)')
+          setZendeskLoaded(true)
+          window.zE('messenger', 'hide')
+          clearInterval(pollInterval)
+        }
+      }, 100)
+
+      // Stop polling after 10 seconds
+      setTimeout(() => {
+        clearInterval(pollInterval)
+        if (!window.zE) {
+          setLoadError('Zendesk kunde inte laddas')
+        }
+      }, 10000)
+      return
+    }
+
+    console.log('[HappiBean] Loading Zendesk script with key:', config.zendeskKey)
 
     // Load Zendesk Messaging script
     const script = document.createElement('script')
     script.id = 'ze-snippet'
     script.src = `https://static.zdassets.com/ekr/snippet.js?key=${config.zendeskKey}`
     script.async = true
+
     script.onload = () => {
-      setZendeskLoaded(true)
-      // Hide the default Zendesk launcher button
-      if (window.zE) {
-        window.zE('messenger', 'hide')
-      }
+      console.log('[HappiBean] Script loaded, waiting for zE...')
+      // Poll for zE to become available
+      const pollInterval = setInterval(() => {
+        if (window.zE) {
+          console.log('[HappiBean] Zendesk ready!')
+          setZendeskLoaded(true)
+          window.zE('messenger', 'hide')
+          clearInterval(pollInterval)
+        }
+      }, 100)
+
+      // Stop polling after 10 seconds
+      setTimeout(() => {
+        clearInterval(pollInterval)
+        if (!window.zE) {
+          console.error('[HappiBean] Zendesk failed to initialize')
+          setLoadError('Zendesk kunde inte initialiseras')
+        }
+      }, 10000)
     }
+
+    script.onerror = () => {
+      console.error('[HappiBean] Failed to load Zendesk script')
+      setLoadError('Kunde inte ladda Zendesk-scriptet')
+    }
+
     document.head.appendChild(script)
 
     return () => {
@@ -59,9 +107,12 @@ export function MessagesTab({ config, autoOpen }: Props) {
   }, [autoOpen, zendeskLoaded])
 
   const openChat = () => {
+    console.log('[HappiBean] openChat called, zE:', !!window.zE)
     if (window.zE) {
       window.zE('messenger', 'open')
       setChatOpen(true)
+    } else {
+      setLoadError('Zendesk är inte laddat ännu')
     }
   }
 
@@ -126,10 +177,29 @@ export function MessagesTab({ config, autoOpen }: Props) {
           maxWidth: '250px',
           lineHeight: '1.5'
         }}>
-          {chatOpen
-            ? 'Chatten är öppen. Klicka på chattfönstret för att fortsätta.'
-            : 'Starta en ny konversation med vårt supportteam.'}
+          {loadError
+            ? loadError
+            : chatOpen
+              ? 'Chatten är öppen. Klicka på chattfönstret för att fortsätta.'
+              : 'Starta en ny konversation med vårt supportteam.'}
         </p>
+        {loadError && (
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: '10px',
+              padding: '8px 16px',
+              background: config.colors.primary,
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px'
+            }}
+          >
+            Ladda om sidan
+          </button>
+        )}
       </div>
 
       {/* Start chat button */}
