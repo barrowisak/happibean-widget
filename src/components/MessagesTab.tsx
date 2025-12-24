@@ -107,11 +107,11 @@ export function MessagesTab({ config }: Props) {
         /* Messenger container - shift up to hide Zendesk header */
         #happibean-messenger {
           position: absolute !important;
-          top: -56px !important;
+          top: -62px !important;
           left: 0 !important;
           right: 0 !important;
-          bottom: -40px !important;
-          height: calc(100% + 96px) !important;
+          bottom: -50px !important;
+          height: calc(100% + 112px) !important;
         }
         #happibean-messenger iframe {
           width: 100% !important;
@@ -119,6 +119,45 @@ export function MessagesTab({ config }: Props) {
           border: none !important;
         }
       `}</style>
+
+      {/* Back button - visible when in chat */}
+      {!isLoading && (
+        <button
+          onClick={() => {
+            // Go back in Zendesk widget (to conversation list)
+            if (window.zE) {
+              window.zE('messenger', 'close')
+              // Re-render to show conversation list
+              window.zE('messenger', 'render', {
+                mode: 'embedded',
+                widget: {
+                  targetElement: '#happibean-messenger'
+                }
+              })
+            }
+          }}
+          style={{
+            position: 'absolute',
+            top: '8px',
+            left: '8px',
+            zIndex: 10,
+            background: 'white',
+            border: '1px solid #e0e0e0',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+      )}
 
       {isLoading && (
         <div style={{
