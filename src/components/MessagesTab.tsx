@@ -192,24 +192,35 @@ export function MessagesTab({ config }: Props) {
     )
   }
 
-  // Show embedded widget
+  // Show embedded widget - seamless integration
   return (
     <div ref={containerRef} style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
-      minHeight: '400px'
+      minHeight: '400px',
+      margin: '-20px',
+      marginTop: '-10px'
     }}>
       {/* Container for embedded Zendesk widget */}
       <div
         id="happibean-messenger-container"
         style={{
           flex: 1,
-          minHeight: '400px',
-          borderRadius: '8px',
-          overflow: 'hidden'
+          minHeight: '420px'
         }}
       />
+      <style>{`
+        #happibean-messenger-container iframe {
+          border: none !important;
+          border-radius: 0 !important;
+        }
+        #happibean-messenger-container > div {
+          border: none !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
+      `}</style>
     </div>
   )
 }
