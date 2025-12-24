@@ -87,11 +87,36 @@ export function MessagesTab({ config }: Props) {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '100%',
+      height: 'calc(100% + 24px)',
       overflow: 'hidden',
       margin: '-16px',
       marginTop: '-8px'
     }}>
+      {/* CSS to hide Zendesk header and footer */}
+      <style>{`
+        @keyframes hb-spin {
+          to { transform: rotate(360deg); }
+        }
+        /* Hide Zendesk's own header (the brown "B2B Support" bar) */
+        #happibean-chat-container [data-testid="messenger-header"],
+        #happibean-chat-container header,
+        #happibean-chat-container [class*="Header"] {
+          display: none !important;
+        }
+        /* Hide "Built with Zendesk" footer */
+        #happibean-chat-container [data-testid="messenger-footer"],
+        #happibean-chat-container footer,
+        #happibean-chat-container [class*="Footer"],
+        #happibean-chat-container [class*="branding"] {
+          display: none !important;
+        }
+        /* Make iframe fill container */
+        #happibean-chat-container iframe {
+          height: 100% !important;
+          border: none !important;
+        }
+      `}</style>
+
       {isLoading && (
         <div style={{
           display: 'flex',
@@ -110,11 +135,6 @@ export function MessagesTab({ config }: Props) {
             animation: 'hb-spin 1s linear infinite'
           }} />
           <p style={{ color: '#666', fontSize: '14px' }}>Laddar chatt...</p>
-          <style>{`
-            @keyframes hb-spin {
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
         </div>
       )}
 
