@@ -199,26 +199,38 @@ export function MessagesTab({ config }: Props) {
       flexDirection: 'column',
       height: '100%',
       minHeight: '400px',
-      margin: '-20px',
-      marginTop: '-10px'
+      margin: '-20px -20px -20px -20px',
+      width: 'calc(100% + 40px)'
     }}>
       {/* Container for embedded Zendesk widget */}
       <div
         id="happibean-messenger-container"
         style={{
           flex: 1,
-          minHeight: '420px'
+          minHeight: '450px',
+          position: 'relative'
         }}
       />
       <style>{`
-        #happibean-messenger-container iframe {
+        #happibean-messenger-container,
+        #happibean-messenger-container > div,
+        #happibean-messenger-container iframe,
+        #happibean-messenger-container [class*="messenger"],
+        #happibean-messenger-container [data-garden-container] {
           border: none !important;
           border-radius: 0 !important;
+          box-shadow: none !important;
+          background: transparent !important;
         }
-        #happibean-messenger-container > div {
+        #happibean-messenger-container iframe {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 450px !important;
+        }
+        /* Remove Zendesk's outer frame styling */
+        [data-embed="true"] {
           border: none !important;
           box-shadow: none !important;
-          border-radius: 0 !important;
         }
       `}</style>
     </div>
