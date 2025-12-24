@@ -15,11 +15,12 @@ declare global {
 export function MessagesTab({ config, autoOpen }: Props) {
   const [isLoading, setIsLoading] = useState(true)
   const [showChat, setShowChat] = useState(autoOpen || false)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const renderedRef = useRef(false)
+  const listContainerRef = useRef<HTMLDivElement>(null)
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  const renderedRef = useRef<{ list: boolean; chat: boolean }>({ list: false, chat: false })
 
   useEffect(() => {
-    if (!config.zendeskKey || renderedRef.current) {
+    if (!config.zendeskKey) {
       setIsLoading(false)
       return
     }
@@ -34,19 +35,13 @@ export function MessagesTab({ config, autoOpen }: Props) {
       document.head.appendChild(script)
     }
 
-    // Poll for zE and render once
+    // Poll for zE and render
     const poll = setInterval(() => {
-      if (window.zE && containerRef.current && !renderedRef.current) {
+      if (window.zE) {
         clearInterval(poll)
-        renderedRef.current = true
 
-        // Render embedded in our container
-        window.zE('messenger', 'render', {
-          mode: 'embedded',
-          widget: {
-            targetElement: '#happibean-chat-container'
-          }
-        })
+        // Always hide the floating launcher
+        window.zE('messenger', 'hide')
 
         setIsLoading(false)
       }
@@ -62,6 +57,36 @@ export function MessagesTab({ config, autoOpen }: Props) {
       clearTimeout(timeout)
     }
   }, [config.zendeskKey])
+
+  // Render conversation list when not showing chat
+  useEffect(() => {
+    if (!showChat && !isLoading && window.zE && listContainerRef.current && !renderedRef.current.list) {
+      renderedRef.current.list = true
+
+      // Render conversation list in embedded mode
+      window.zE('messenger', 'render', {
+        mode: 'embedded',
+        conversationList: {
+          targetElement: '#happibean-conversation-list'
+        }
+      })
+    }
+  }, [showChat, isLoading])
+
+  // Render chat when showing chat
+  useEffect(() => {
+    if (showChat && !isLoading && window.zE && chatContainerRef.current && !renderedRef.current.chat) {
+      renderedRef.current.chat = true
+
+      // Render full widget in embedded mode
+      window.zE('messenger', 'render', {
+        mode: 'embedded',
+        widget: {
+          targetElement: '#happibean-chat-container'
+        }
+      })
+    }
+  }, [showChat, isLoading])
 
   // Auto-open chat when coming from Home tab
   useEffect(() => {
@@ -91,70 +116,6 @@ export function MessagesTab({ config, autoOpen }: Props) {
     )
   }
 
-  // Conversation list view (default when clicking Messages tab)
-  if (!showChat) {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        padding: '20px'
-      }}>
-        <h3 style={{
-          fontSize: '16px',
-          fontWeight: 600,
-          color: '#333',
-          marginBottom: '16px'
-        }}>
-          Dina konversationer
-        </h3>
-
-        {/* Placeholder for conversation list - Zendesk doesn't expose this easily */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
-          color: '#666'
-        }}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" style={{ marginBottom: '16px' }}>
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          <p style={{ fontSize: '14px', marginBottom: '20px' }}>
-            Starta en ny konversation med oss
-          </p>
-        </div>
-
-        <button
-          onClick={() => setShowChat(true)}
-          style={{
-            padding: '14px 20px',
-            background: `linear-gradient(135deg, ${config.colors.primary}, ${config.colors.secondary})`,
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '15px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px'
-          }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Ny konversation
-        </button>
-      </div>
-    )
-  }
-
-  // Chat view (full Zendesk embedded widget)
   return (
     <div style={{
       position: 'relative',
@@ -166,14 +127,36 @@ export function MessagesTab({ config, autoOpen }: Props) {
         @keyframes hb-spin {
           to { transform: rotate(360deg); }
         }
-        /* Position chat container to hide Zendesk header by shifting up */
+
+        /* Hide Zendesk's floating launcher globally */
+        iframe[data-product="web_widget"],
+        div[data-product="web_widget"] {
+          display: none !important;
+        }
+
+        /* Conversation list container */
+        #happibean-conversation-list {
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          height: 100% !important;
+        }
+        #happibean-conversation-list iframe {
+          width: 100% !important;
+          height: 100% !important;
+          border: none !important;
+        }
+
+        /* Chat container - hide Zendesk header by shifting up */
         #happibean-chat-container {
           position: absolute !important;
           top: -70px !important;
-          left: -1px !important;
-          right: -1px !important;
-          bottom: -50px !important;
-          height: calc(100% + 120px) !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: -60px !important;
+          height: calc(100% + 130px) !important;
         }
         #happibean-chat-container iframe {
           width: 100% !important;
@@ -181,31 +164,6 @@ export function MessagesTab({ config, autoOpen }: Props) {
           border: none !important;
         }
       `}</style>
-
-      {/* Back button */}
-      <button
-        onClick={() => setShowChat(false)}
-        style={{
-          position: 'absolute',
-          top: '10px',
-          left: '10px',
-          zIndex: 10,
-          background: 'white',
-          border: '1px solid #ddd',
-          borderRadius: '50%',
-          width: '36px',
-          height: '36px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2">
-          <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
-      </button>
 
       {isLoading && (
         <div style={{
@@ -224,17 +182,59 @@ export function MessagesTab({ config, autoOpen }: Props) {
             borderRadius: '50%',
             animation: 'hb-spin 1s linear infinite'
           }} />
-          <p style={{ color: '#666', fontSize: '14px' }}>Laddar chatt...</p>
+          <p style={{ color: '#666', fontSize: '14px' }}>Laddar...</p>
         </div>
       )}
 
+      {/* Conversation list view */}
       <div
-        id="happibean-chat-container"
-        ref={containerRef}
+        id="happibean-conversation-list"
+        ref={listContainerRef}
         style={{
-          display: isLoading ? 'none' : 'block'
+          display: (!isLoading && !showChat) ? 'block' : 'none'
         }}
       />
+
+      {/* Chat view */}
+      <div style={{
+        display: (!isLoading && showChat) ? 'block' : 'none',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflow: 'hidden'
+      }}>
+        {/* Back button */}
+        <button
+          onClick={() => setShowChat(false)}
+          style={{
+            position: 'absolute',
+            top: '10px',
+            left: '10px',
+            zIndex: 10,
+            background: 'white',
+            border: '1px solid #ddd',
+            borderRadius: '50%',
+            width: '36px',
+            height: '36px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+
+        <div
+          id="happibean-chat-container"
+          ref={chatContainerRef}
+        />
+      </div>
     </div>
   )
 }
