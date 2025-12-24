@@ -85,33 +85,28 @@ export function MessagesTab({ config }: Props) {
 
   return (
     <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: 'calc(100% + 24px)',
-      overflow: 'hidden',
-      margin: '-16px',
-      marginTop: '-8px'
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      overflow: 'hidden'
     }}>
-      {/* CSS to hide Zendesk header and footer */}
       <style>{`
         @keyframes hb-spin {
           to { transform: rotate(360deg); }
         }
-        /* Hide Zendesk's own header (the brown "B2B Support" bar) */
-        #happibean-chat-container [data-testid="messenger-header"],
-        #happibean-chat-container header,
-        #happibean-chat-container [class*="Header"] {
-          display: none !important;
+        /* Make iframe fill and overflow to hide header */
+        #happibean-chat-container {
+          position: absolute !important;
+          top: -70px !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: -50px !important;
+          height: calc(100% + 120px) !important;
         }
-        /* Hide "Built with Zendesk" footer */
-        #happibean-chat-container [data-testid="messenger-footer"],
-        #happibean-chat-container footer,
-        #happibean-chat-container [class*="Footer"],
-        #happibean-chat-container [class*="branding"] {
-          display: none !important;
-        }
-        /* Make iframe fill container */
         #happibean-chat-container iframe {
+          width: 100% !important;
           height: 100% !important;
           border: none !important;
         }
@@ -142,10 +137,7 @@ export function MessagesTab({ config }: Props) {
         id="happibean-chat-container"
         ref={containerRef}
         style={{
-          flex: 1,
-          display: isLoading ? 'none' : 'block',
-          height: '100%',
-          overflow: 'hidden'
+          display: isLoading ? 'none' : 'block'
         }}
       />
     </div>
