@@ -8,30 +8,24 @@ interface Props {
 
 declare global {
   interface Window {
-    zE?: (action: string, command: string, callback?: () => void) => void
+    zE?: (action: string, command: string, options?: unknown) => void
   }
 }
 
-export function MessagesTab({ config, autoOpen }: Props) {
+export function MessagesTab({ config }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [zendeskLoaded, setZendeskLoaded] = useState(false)
-  const [chatOpen, setChatOpen] = useState(autoOpen || false)
+  const [rendered, setRendered] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
+  // Load Zendesk script
   useEffect(() => {
     if (!config.zendeskKey) return
-
-    // Check if zE is already available
-    if (window.zE) {
-      console.log('[HappiBean] Zendesk already loaded')
-      setZendeskLoaded(true)
-      return
-    }
 
     // Check if script already exists
     const existingScript = document.getElementById('ze-snippet')
     if (existingScript) {
-      // Script exists but zE not ready yet - poll for it
+      // Poll for zE to become available
       const pollInterval = setInterval(() => {
         if (window.zE) {
           console.log('[HappiBean] Zendesk ready (polled)')
@@ -40,7 +34,6 @@ export function MessagesTab({ config, autoOpen }: Props) {
         }
       }, 100)
 
-      // Stop polling after 10 seconds
       setTimeout(() => {
         clearInterval(pollInterval)
         if (!window.zE) {
@@ -60,7 +53,6 @@ export function MessagesTab({ config, autoOpen }: Props) {
 
     script.onload = () => {
       console.log('[HappiBean] Script loaded, waiting for zE...')
-      // Poll for zE to become available
       const pollInterval = setInterval(() => {
         if (window.zE) {
           console.log('[HappiBean] Zendesk ready!')
@@ -69,7 +61,6 @@ export function MessagesTab({ config, autoOpen }: Props) {
         }
       }, 100)
 
-      // Stop polling after 10 seconds
       setTimeout(() => {
         clearInterval(pollInterval)
         if (!window.zE) {
@@ -85,32 +76,35 @@ export function MessagesTab({ config, autoOpen }: Props) {
     }
 
     document.head.appendChild(script)
-
-    return () => {
-      // Close messenger when component unmounts
-      if (window.zE) {
-        window.zE('messenger', 'close')
-      }
-    }
   }, [config.zendeskKey])
 
+  // Render widget in embedded mode once loaded
   useEffect(() => {
-    // Auto-open chat if requested
-    if (autoOpen && zendeskLoaded && window.zE) {
-      window.zE('messenger', 'open')
-      setChatOpen(true)
-    }
-  }, [autoOpen, zendeskLoaded])
+    if (!zendeskLoaded || !window.zE || !containerRef.current || rendered) return
 
-  const openChat = () => {
-    console.log('[HappiBean] openChat called, zE:', !!window.zE)
-    if (window.zE) {
-      window.zE('messenger', 'open')
-      setChatOpen(true)
-    } else {
-      setLoadError('Zendesk är inte laddat ännu')
+    console.log('[HappiBean] Rendering in embedded mode...')
+
+    try {
+      // Hide the default floating launcher
+      window.zE('messenger', 'hide')
+
+      // Small delay to ensure container is ready
+      setTimeout(() => {
+        if (window.zE) {
+          // Render in embedded mode
+          window.zE('messenger', 'render', {
+            mode: 'embedded',
+            widget: { targetElement: '#happibean-messenger-container' }
+          })
+          setRendered(true)
+          console.log('[HappiBean] Embedded render complete!')
+        }
+      }, 100)
+    } catch (err) {
+      console.error('[HappiBean] Failed to render embedded:', err)
+      setLoadError('Kunde inte bädda in chatten')
     }
-  }
+  }, [zendeskLoaded, rendered])
 
   if (!config.zendeskKey) {
     return (
@@ -136,113 +130,86 @@ export function MessagesTab({ config, autoOpen }: Props) {
     )
   }
 
+  // Show loading state
+  if (!rendered) {
+    return (
+      <div ref={containerRef} style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: '400px'
+      }}>
+        {/* Container for embedded Zendesk widget */}
+        <div
+          id="happibean-messenger-container"
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#fafafa',
+            borderRadius: '8px'
+          }}
+        >
+          {loadError ? (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <p style={{ color: '#c00', marginBottom: '10px' }}>{loadError}</p>
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  padding: '8px 16px',
+                  background: config.colors.primary,
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Ladda om sidan
+              </button>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', color: '#888' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                border: `3px solid ${config.colors.primary}`,
+                borderTopColor: 'transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 15px'
+              }} />
+              <p>Laddar chatt...</p>
+              <style>{`
+                @keyframes spin {
+                  to { transform: rotate(360deg); }
+                }
+              `}</style>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Show embedded widget
   return (
     <div ref={containerRef} style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
-      minHeight: '350px',
-      background: 'white',
-      borderRadius: '8px'
+      minHeight: '400px'
     }}>
-      {/* Chat history placeholder */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '40px 20px',
-        textAlign: 'center'
-      }}>
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke={config.colors.primary} strokeWidth="1.5" style={{ opacity: 0.6 }}>
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-        <h3 style={{
-          color: '#333',
-          marginTop: '20px',
-          marginBottom: '8px',
-          fontSize: '1.1rem',
-          fontWeight: 600
-        }}>
-          Meddelanden
-        </h3>
-        <p style={{
-          color: '#666',
-          fontSize: '14px',
-          maxWidth: '250px',
-          lineHeight: '1.5'
-        }}>
-          {loadError
-            ? loadError
-            : chatOpen
-              ? 'Chatten är öppen. Klicka på chattfönstret för att fortsätta.'
-              : 'Starta en ny konversation med vårt supportteam.'}
-        </p>
-        {loadError && (
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              marginTop: '10px',
-              padding: '8px 16px',
-              background: config.colors.primary,
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px'
-            }}
-          >
-            Ladda om sidan
-          </button>
-        )}
-      </div>
-
-      {/* Start chat button */}
-      <div style={{
-        padding: '20px',
-        borderTop: '1px solid #eee'
-      }}>
-        <button
-          onClick={openChat}
-          disabled={!zendeskLoaded}
-          style={{
-            width: '100%',
-            padding: '14px 20px',
-            background: zendeskLoaded
-              ? `linear-gradient(135deg, ${config.colors.primary}, ${config.colors.secondary})`
-              : '#ccc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '15px',
-            fontWeight: 600,
-            cursor: zendeskLoaded ? 'pointer' : 'not-allowed',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px',
-            transition: 'transform 0.2s, box-shadow 0.2s'
-          }}
-          onMouseEnter={e => {
-            if (zendeskLoaded) {
-              e.currentTarget.style.transform = 'translateY(-1px)'
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
-            }
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = 'none'
-          }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          {zendeskLoaded
-            ? (chatOpen ? 'Öppna chatten' : 'Starta ny chatt')
-            : 'Laddar...'}
-        </button>
-      </div>
+      {/* Container for embedded Zendesk widget */}
+      <div
+        id="happibean-messenger-container"
+        style={{
+          flex: 1,
+          minHeight: '400px',
+          borderRadius: '8px',
+          overflow: 'hidden'
+        }}
+      />
     </div>
   )
 }
