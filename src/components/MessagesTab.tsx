@@ -85,24 +85,21 @@ export function MessagesTab({ config }: Props) {
 
   return (
     <div style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
+      position: 'relative',
+      width: '100%',
+      height: '100%',
       overflow: 'hidden'
     }}>
       <style>{`
         @keyframes hb-spin {
           to { transform: rotate(360deg); }
         }
-        /* Make iframe fill and overflow to hide header */
+        /* Position chat container to hide Zendesk header by shifting up */
         #happibean-chat-container {
           position: absolute !important;
           top: -70px !important;
-          left: 0 !important;
-          right: 0 !important;
-          bottom: -50px !important;
+          left: -1px !important;
+          right: -1px !important;
           height: calc(100% + 120px) !important;
         }
         #happibean-chat-container iframe {
