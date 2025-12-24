@@ -10,6 +10,7 @@ declare global {
   interface Window {
     zE?: (action: string, command: string, callback?: unknown) => void
     zESettings?: { autoRender: boolean }
+    __HAPPIBEAN_ZE_LOADED?: boolean
   }
 }
 
@@ -24,24 +25,51 @@ export function MessagesTab({ config }: Props) {
       return
     }
 
-    // CRITICAL: Disable auto-render BEFORE loading the script
-    // This prevents the floating widget from appearing
-    window.zESettings = { autoRender: false }
-
-    // Check if already loaded and rendered
-    if (window.zE && isRendered) {
+    // If we already rendered, just show it
+    if (isRendered) {
       setIsLoading(false)
       return
     }
 
-    // Load script if not exists
+    // CRITICAL: Set this BEFORE any script loading
+    window.zESettings = { autoRender: false }
+
     const existingScript = document.getElementById('ze-snippet')
-    if (!existingScript) {
-      const script = document.createElement('script')
-      script.id = 'ze-snippet'
-      script.src = `https://static.zdassets.com/ekr/snippet.js?key=${config.zendeskKey}`
-      script.async = true
-      document.head.appendChild(script)
+
+    // If script already exists AND zE is available, it may have auto-rendered
+    // We need to hide the floating one and re-render embedded
+    if (existingScript && window.zE) {
+      // Hide any existing floating widget
+      window.zE('messenger', 'hide')
+
+      // Render in embedded mode
+      setTimeout(() => {
+        if (window.zE && containerRef.current) {
+          window.zE('messenger', 'render', {
+            mode: 'embedded',
+            widget: {
+              targetElement: '#happibean-zendesk-container'
+            }
+          })
+          setIsRendered(true)
+          setIsLoading(false)
+        }
+      }, 100)
+      return
+    }
+
+    // First time loading - set flag and load script
+    if (!existingScript && !window.__HAPPIBEAN_ZE_LOADED) {
+      window.__HAPPIBEAN_ZE_LOADED = true
+
+      // Use requestAnimationFrame to ensure zESettings is set before script executes
+      requestAnimationFrame(() => {
+        const script = document.createElement('script')
+        script.id = 'ze-snippet'
+        script.src = `https://static.zdassets.com/ekr/snippet.js?key=${config.zendeskKey}`
+        script.async = true
+        document.head.appendChild(script)
+      })
     }
 
     // Poll for zE to be available, then render in embedded mode
@@ -137,7 +165,6 @@ export function MessagesTab({ config }: Props) {
           display: isLoading ? 'none' : 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          // Remove any extra spacing/borders
           margin: '-16px',
           marginTop: '-8px'
         }}
