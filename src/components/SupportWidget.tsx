@@ -21,6 +21,14 @@ const tabLabels: Record<TabId, string> = {
 
 export function SupportWidget({ config, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>(config.tabs[0] || 'home')
+  const [autoOpenChat, setAutoOpenChat] = useState(false)
+
+  const handleNavigate = (tab: TabId, options?: { autoOpen?: boolean }) => {
+    setActiveTab(tab)
+    if (options?.autoOpen && tab === 'messages') {
+      setAutoOpenChat(true)
+    }
+  }
 
   const positionStyle = config.position === 'bottom-left'
     ? { left: '20px' }
@@ -116,10 +124,10 @@ export function SupportWidget({ config, onClose }: Props) {
 
       {/* Content */}
       <div style={{ flex: 1, overflow: 'auto', padding: '15px', background: '#f5f5f5' }}>
-        {activeTab === 'home' && <HomeTab config={config} onNavigate={setActiveTab} />}
+        {activeTab === 'home' && <HomeTab config={config} onNavigate={handleNavigate} />}
         {activeTab === 'help' && <HelpTab config={config} />}
         {activeTab === 'contact' && <ContactTab config={config} />}
-        {activeTab === 'messages' && <MessagesTab config={config} />}
+        {activeTab === 'messages' && <MessagesTab config={config} autoOpen={autoOpenChat} />}
       </div>
 
       {/* Tab bar */}

@@ -3,7 +3,7 @@ import { HappiBeanConfig } from '../config'
 
 interface Props {
   config: HappiBeanConfig
-  onNavigate: (tab: 'home' | 'help' | 'contact' | 'messages') => void
+  onNavigate: (tab: 'home' | 'help' | 'contact' | 'messages', options?: { autoOpen?: boolean }) => void
 }
 
 interface Article {
@@ -98,7 +98,7 @@ export function HomeTab({ config, onNavigate }: Props) {
       {/* Send us a message card */}
       {config.tabs.includes('messages') && (
         <div
-          onClick={() => onNavigate('messages')}
+          onClick={() => onNavigate('messages', { autoOpen: true })}
           style={{
             background: 'white',
             borderRadius: '12px',
