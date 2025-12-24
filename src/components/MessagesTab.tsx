@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { HappiBeanConfig } from '../config'
 
 interface Props {
@@ -6,14 +6,61 @@ interface Props {
   autoOpen?: boolean
 }
 
+declare global {
+  interface Window {
+    zE?: (action: string, command: string, callback?: unknown) => void
+  }
+}
+
 export function MessagesTab({ config }: Props) {
   const [isLoading, setIsLoading] = useState(true)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const renderedRef = useRef(false)
 
   useEffect(() => {
-    // Simple timeout for iframe load
-    const timer = setTimeout(() => setIsLoading(false), 2000)
-    return () => clearTimeout(timer)
-  }, [])
+    if (!config.zendeskKey || renderedRef.current) {
+      setIsLoading(false)
+      return
+    }
+
+    // Load Zendesk script if not already loaded
+    let script = document.getElementById('ze-snippet') as HTMLScriptElement
+    if (!script) {
+      script = document.createElement('script')
+      script.id = 'ze-snippet'
+      script.src = `https://static.zdassets.com/ekr/snippet.js?key=${config.zendeskKey}`
+      script.async = true
+      document.head.appendChild(script)
+    }
+
+    // Poll for zE and render once
+    const poll = setInterval(() => {
+      if (window.zE && containerRef.current && !renderedRef.current) {
+        clearInterval(poll)
+        renderedRef.current = true
+
+        // Render embedded in our container
+        window.zE('messenger', 'render', {
+          mode: 'embedded',
+          widget: {
+            targetElement: '#happibean-chat-container'
+          }
+        })
+
+        setIsLoading(false)
+      }
+    }, 100)
+
+    const timeout = setTimeout(() => {
+      clearInterval(poll)
+      setIsLoading(false)
+    }, 15000)
+
+    return () => {
+      clearInterval(poll)
+      clearTimeout(timeout)
+    }
+  }, [config.zendeskKey])
 
   if (!config.zendeskKey) {
     return (
@@ -36,85 +83,51 @@ export function MessagesTab({ config }: Props) {
     )
   }
 
-  // Use Zendesk Web Widget in a popup approach - cleanest solution
-  // The embedded API is buggy and creates duplicate widgets
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
       height: '100%',
-      padding: '20px',
-      textAlign: 'center'
+      overflow: 'hidden',
+      margin: '-16px',
+      marginTop: '-8px'
     }}>
-      <div style={{
-        width: '80px',
-        height: '80px',
-        borderRadius: '50%',
-        background: `linear-gradient(135deg, ${config.colors.primary}20, ${config.colors.secondary}20)`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: '20px'
-      }}>
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={config.colors.primary} strokeWidth="1.5">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-      </div>
-
-      <h3 style={{
-        color: '#333',
-        marginBottom: '8px',
-        fontSize: '1.1rem',
-        fontWeight: 600
-      }}>
-        Chatta med oss
-      </h3>
-
-      <p style={{
-        color: '#666',
-        fontSize: '14px',
-        maxWidth: '280px',
-        lineHeight: '1.5',
-        marginBottom: '24px'
-      }}>
-        Vårt team finns här för att hjälpa dig. Klicka nedan för att starta en konversation.
-      </p>
-
-      <a
-        href={`https://happirel.zendesk.com/hc/sv/requests/new`}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          padding: '14px 32px',
-          background: `linear-gradient(135deg, ${config.colors.primary}, ${config.colors.secondary})`,
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '15px',
-          fontWeight: 600,
-          cursor: 'pointer',
+      {isLoading && (
+        <div style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          gap: '10px',
-          textDecoration: 'none',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-        }}
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-        Skicka meddelande
-      </a>
+          justifyContent: 'center',
+          height: '100%',
+          gap: '12px'
+        }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            border: `3px solid ${config.colors.primary}20`,
+            borderTopColor: config.colors.primary,
+            borderRadius: '50%',
+            animation: 'hb-spin 1s linear infinite'
+          }} />
+          <p style={{ color: '#666', fontSize: '14px' }}>Laddar chatt...</p>
+          <style>{`
+            @keyframes hb-spin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      )}
 
-      <p style={{
-        color: '#999',
-        fontSize: '12px',
-        marginTop: '16px'
-      }}>
-        Öppnas i nytt fönster
-      </p>
+      <div
+        id="happibean-chat-container"
+        ref={containerRef}
+        style={{
+          flex: 1,
+          display: isLoading ? 'none' : 'block',
+          height: '100%',
+          overflow: 'hidden'
+        }}
+      />
     </div>
   )
 }

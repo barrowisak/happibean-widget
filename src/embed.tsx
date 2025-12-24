@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client'
 import { getConfig } from './config'
 import { WidgetLauncher } from './components/WidgetLauncher'
 
+// CRITICAL: Disable Zendesk auto-render BEFORE anything else
+// This MUST be set before the Zendesk script loads
+;(window as any).zESettings = { autoRender: false }
+
 // Create container
 const container = document.createElement('div')
 container.id = 'happibean-widget-root'
