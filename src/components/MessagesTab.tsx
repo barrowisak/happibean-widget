@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { HappiBeanConfig } from '../config'
 
 interface Props {
@@ -9,62 +9,70 @@ interface Props {
 declare global {
   interface Window {
     zE?: (action: string, command: string, callback?: unknown) => void
+    zESettings?: { autoRender: boolean }
   }
 }
 
 export function MessagesTab({ config }: Props) {
-  const [zendeskLoaded, setZendeskLoaded] = useState(false)
-  const [chatOpened, setChatOpened] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRendered, setIsRendered] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  // Load Zendesk script
   useEffect(() => {
-    if (!config.zendeskKey) return
-
-    // Check if already loaded
-    if (window.zE) {
-      setZendeskLoaded(true)
+    if (!config.zendeskKey) {
+      setIsLoading(false)
       return
     }
 
-    // Check if script exists
+    // CRITICAL: Disable auto-render BEFORE loading the script
+    // This prevents the floating widget from appearing
+    window.zESettings = { autoRender: false }
+
+    // Check if already loaded and rendered
+    if (window.zE && isRendered) {
+      setIsLoading(false)
+      return
+    }
+
+    // Load script if not exists
     const existingScript = document.getElementById('ze-snippet')
-    if (existingScript) {
-      const poll = setInterval(() => {
-        if (window.zE) {
-          setZendeskLoaded(true)
-          clearInterval(poll)
-        }
-      }, 100)
-      setTimeout(() => clearInterval(poll), 10000)
-      return
+    if (!existingScript) {
+      const script = document.createElement('script')
+      script.id = 'ze-snippet'
+      script.src = `https://static.zdassets.com/ekr/snippet.js?key=${config.zendeskKey}`
+      script.async = true
+      document.head.appendChild(script)
     }
 
-    // Load script
-    const script = document.createElement('script')
-    script.id = 'ze-snippet'
-    script.src = `https://static.zdassets.com/ekr/snippet.js?key=${config.zendeskKey}`
-    script.async = true
-    script.onload = () => {
-      const poll = setInterval(() => {
-        if (window.zE) {
-          setZendeskLoaded(true)
-          // Hide the default launcher
-          window.zE('messenger', 'hide')
-          clearInterval(poll)
-        }
-      }, 100)
-      setTimeout(() => clearInterval(poll), 10000)
-    }
-    document.head.appendChild(script)
-  }, [config.zendeskKey])
+    // Poll for zE to be available, then render in embedded mode
+    const poll = setInterval(() => {
+      if (window.zE && containerRef.current && !isRendered) {
+        clearInterval(poll)
 
-  const openChat = () => {
-    if (window.zE) {
-      window.zE('messenger', 'show')
-      window.zE('messenger', 'open')
-      setChatOpened(true)
+        // Render in embedded mode inside our container
+        window.zE('messenger', 'render', {
+          mode: 'embedded',
+          widget: {
+            targetElement: '#happibean-zendesk-container'
+          }
+        })
+
+        setIsRendered(true)
+        setIsLoading(false)
+      }
+    }, 100)
+
+    // Timeout after 15 seconds
+    const timeout = setTimeout(() => {
+      clearInterval(poll)
+      setIsLoading(false)
+    }, 15000)
+
+    return () => {
+      clearInterval(poll)
+      clearTimeout(timeout)
     }
-  }
+  }, [config.zendeskKey, isRendered])
 
   if (!config.zendeskKey) {
     return (
@@ -91,64 +99,49 @@ export function MessagesTab({ config }: Props) {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
       height: '100%',
-      padding: '40px 20px',
-      textAlign: 'center'
+      overflow: 'hidden'
     }}>
-      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke={config.colors.primary} strokeWidth="1.5" style={{ opacity: 0.7 }}>
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      </svg>
-
-      <h3 style={{
-        color: '#333',
-        marginTop: '20px',
-        marginBottom: '8px',
-        fontSize: '1.1rem',
-        fontWeight: 600
-      }}>
-        Meddelanden
-      </h3>
-
-      <p style={{
-        color: '#666',
-        fontSize: '14px',
-        maxWidth: '250px',
-        lineHeight: '1.5',
-        marginBottom: '20px'
-      }}>
-        {chatOpened
-          ? 'Chatten är öppen. Klicka på Zendesk-ikonen för att fortsätta.'
-          : 'Starta en konversation med vårt supportteam.'}
-      </p>
-
-      <button
-        onClick={openChat}
-        disabled={!zendeskLoaded}
-        style={{
-          padding: '14px 28px',
-          background: zendeskLoaded
-            ? `linear-gradient(135deg, ${config.colors.primary}, ${config.colors.secondary})`
-            : '#ccc',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '15px',
-          fontWeight: 600,
-          cursor: zendeskLoaded ? 'pointer' : 'not-allowed',
+      {isLoading && (
+        <div style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          gap: '10px'
+          justifyContent: 'center',
+          height: '100%',
+          gap: '12px'
+        }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            border: `3px solid ${config.colors.primary}20`,
+            borderTopColor: config.colors.primary,
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <p style={{ color: '#666', fontSize: '14px' }}>Laddar chatt...</p>
+          <style>{`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      )}
+
+      {/* Zendesk embedded widget container */}
+      <div
+        id="happibean-zendesk-container"
+        ref={containerRef}
+        style={{
+          flex: 1,
+          display: isLoading ? 'none' : 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          // Remove any extra spacing/borders
+          margin: '-16px',
+          marginTop: '-8px'
         }}
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-        {zendeskLoaded
-          ? (chatOpened ? 'Öppna chatten' : 'Starta chatt')
-          : 'Laddar...'}
-      </button>
+      />
     </div>
   )
 }
