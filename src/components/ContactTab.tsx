@@ -37,6 +37,7 @@ export function ContactTab({ config }: Props) {
     subject: '',
     message: ''
   })
+  const [attachments, setAttachments] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
@@ -164,17 +165,25 @@ export function ContactTab({ config }: Props) {
           value: formData[`field_${f.id}`] || ''
         }))
 
+      // Use FormData to support file uploads
+      const formDataToSend = new FormData()
+      formDataToSend.append('name', formData.name)
+      formDataToSend.append('email', formData.email)
+      formDataToSend.append('subject', formData.subject)
+      formDataToSend.append('message', formData.message)
+      if (selectedForm?.id) {
+        formDataToSend.append('ticket_form_id', String(selectedForm.id))
+      }
+      formDataToSend.append('custom_fields', JSON.stringify(customFields))
+
+      // Append files
+      attachments.forEach((file) => {
+        formDataToSend.append('attachments', file)
+      })
+
       const res = await fetch(`${config.apiUrl}/requests`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          subject: formData.subject,
-          message: formData.message,
-          ticket_form_id: selectedForm?.id,
-          custom_fields: customFields
-        })
+        body: formDataToSend
       })
 
       if (res.ok) {
@@ -187,6 +196,18 @@ export function ContactTab({ config }: Props) {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files) {
+      const newFiles = Array.from(files)
+      setAttachments(prev => [...prev, ...newFiles].slice(0, 5)) // Max 5 files
+    }
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index))
   }
 
   const inputStyle = {
@@ -239,6 +260,7 @@ export function ContactTab({ config }: Props) {
           onClick={() => {
             setSubmitted(false)
             setFormData({ name: '', email: '', subject: '', message: '' })
+            setAttachments([])
           }}
           style={{
             marginTop: '20px',
@@ -399,6 +421,80 @@ export function ContactTab({ config }: Props) {
             resize: 'vertical'
           }}
         />
+      </div>
+
+      {/* File attachments */}
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', fontSize: '13px', color: '#555' }}>
+          Bifoga filer (max 5)
+        </label>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 15px',
+            border: '1px dashed #ccc',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            background: '#fafafa',
+            fontSize: '13px',
+            color: '#666'
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+          </svg>
+          Klicka för att välja filer
+          <input
+            type="file"
+            multiple
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+            accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif"
+          />
+        </label>
+
+        {/* Show selected files */}
+        {attachments.length > 0 && (
+          <div style={{ marginTop: '10px' }}>
+            {attachments.map((file, index) => (
+              <div
+                key={index}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '6px 10px',
+                  background: '#f0f0f0',
+                  borderRadius: '4px',
+                  marginBottom: '5px',
+                  fontSize: '12px'
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+                  {file.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeAttachment(index)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    color: '#999'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {error && (

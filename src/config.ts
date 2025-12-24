@@ -14,6 +14,12 @@ export interface HappiBeanConfig {
   position?: 'bottom-right' | 'bottom-left'
   launcherIcon?: 'question' | 'chat' | 'support' | 'smile'
   zendeskKey?: string
+  tabLabels?: {
+    home?: string
+    help?: string
+    contact?: string
+    messages?: string
+  }
 }
 
 declare global {

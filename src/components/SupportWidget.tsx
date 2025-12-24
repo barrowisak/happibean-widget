@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { HappiBeanConfig } from '../config'
 import { HomeTab } from './HomeTab'
 import { HelpTab } from './HelpTab'
@@ -12,7 +12,7 @@ interface Props {
 
 type TabId = 'home' | 'help' | 'contact' | 'messages'
 
-const tabLabels: Record<TabId, string> = {
+const defaultTabLabels: Record<TabId, string> = {
   home: 'Home',
   help: 'Help',
   contact: 'Contact',
@@ -123,7 +123,13 @@ export function SupportWidget({ config, onClose }: Props) {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '15px', background: '#f5f5f5' }}>
+      <div style={{
+        flex: 1,
+        overflow: activeTab === 'messages' ? 'hidden' : 'auto',
+        padding: activeTab === 'messages' ? 0 : '15px',
+        background: '#f5f5f5',
+        position: 'relative'
+      }}>
         {activeTab === 'home' && <HomeTab config={config} onNavigate={handleNavigate} />}
         {activeTab === 'help' && <HelpTab config={config} />}
         {activeTab === 'contact' && <ContactTab config={config} />}
@@ -156,7 +162,7 @@ export function SupportWidget({ config, onClose }: Props) {
             }}
           >
             {getTabIcon(tab, activeTab === tab)}
-            <span style={{ fontSize: '11px' }}>{tabLabels[tab]}</span>
+            <span style={{ fontSize: '11px' }}>{config.tabLabels?.[tab] || defaultTabLabels[tab]}</span>
           </button>
         ))}
       </div>
