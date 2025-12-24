@@ -231,6 +231,31 @@ export function HelpTab({ config }: Props) {
       {/* Single article */}
       {view === 'article' && selectedArticle && (
         <div>
+          {/* Open in Help Center button */}
+          <button
+            onClick={() => window.open(`https://happirel.zendesk.com/hc/sv/articles/${selectedArticle.id}`, '_blank')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 12px',
+              marginBottom: '15px',
+              background: config.colors.primary,
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              width: 'fit-content'
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            Öppna i Help Center
+          </button>
           <h3 style={{ fontSize: '1.1rem', marginBottom: '15px', color: '#333' }}>
             {selectedArticle.title}
           </h3>
